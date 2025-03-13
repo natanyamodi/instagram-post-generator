@@ -1,27 +1,23 @@
+import streamlit as st
 from gradio_client import Client, handle_file
 from PIL import Image
 import tempfile
 import os
+import gc
 
+@st.cache_resource
+def get_gradio_client():
+    return Client("gokaygokay/Florence-2")
+
+@st.cache_data
 def generate_image_description(image: Image.Image):
-    """
-    Generates a caption for an image using the Florence-2 model.
+    client = get_gradio_client()
 
-    Args:
-        image (PIL.Image.Image): The image to generate a caption for.
-
-    Returns:
-        str: The generated caption, or None if an error occurs.
-    """
-    client = Client("gokaygokay/Florence-2")
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+        image.save(temp_file, format="JPEG")
+        temp_file_path = temp_file.name
 
     try:
-        # Save the PIL Image to a temporary file
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-            image.save(temp_file, format="JPEG")
-            temp_file_path = temp_file.name
-
-        # Pass the temporary file path to handle_file
         result = client.predict(
             image=handle_file(temp_file_path),
             task_prompt="Detailed Caption",
@@ -29,10 +25,10 @@ def generate_image_description(image: Image.Image):
             model_id="microsoft/Florence-2-large",
             api_name="/process_image"
         )
-
-        os.unlink(temp_file_path)
-
         return result
     except Exception as e:
-        print(f"An error occurred: {e}")
+        st.error(f"An error occurred: {e}")
         return None
+    finally:
+        os.unlink(temp_file_path)
+        gc.collect()
