@@ -36,19 +36,6 @@ if image:
         with st.spinner("Generating Post..."):
             try:
                 improved_post = main_workflow(img, text_input)
-                st.markdown(
-                    f"""
-                    <style>
-                    pre {{
-                        white-space: pre-wrap !important;
-                        word-wrap: break-word !important;
-                        overflow-x: hidden !important;
-                    }}
-                    </style>
-                    <pre>{improved_post}</pre>
-                    """,
-                    unsafe_allow_html=True
-                )
-
+                st.write(improved_post)
             except Exception as e:
                 st.error(f"An error occurred: {e}")
