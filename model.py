@@ -1,44 +1,38 @@
-import textwrap
-from PIL import Image, ImageDraw, ImageFont
-from transformers import AutoProcessor, AutoModelForCausalLM
+from gradio_client import Client, handle_file
+from PIL import Image
+import tempfile
+import os
 
-device = 'cpu'
+def generate_image_description(image: Image.Image):
+    """
+    Generates a caption for an image using the Florence-2 model.
 
-model_id = 'microsoft/Florence-2-base'
+    Args:
+        image (PIL.Image.Image): The image to generate a caption for.
 
-#load Florence-2 model
-model = AutoModelForCausalLM.from_pretrained(model_id, device_map = device, trust_remote_code=True).eval()
+    Returns:
+        str: The generated caption, or None if an error occurs.
+    """
+    client = Client("gokaygokay/Florence-2")
 
-processor = AutoProcessor.from_pretrained(model_id, device_map = device, trust_remote_code=True)
-     
+    try:
+        # Save the PIL Image to a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+            image.save(temp_file, format="JPEG")
+            temp_file_path = temp_file.name
 
-def generate_image_description(image, text_input=None):
-    """Generates a detailed caption for an image."""
-    task_prompt = '<MORE_DETAILED_CAPTION>'
+        # Pass the temporary file path to handle_file
+        result = client.predict(
+            image=handle_file(temp_file_path),
+            task_prompt="Detailed Caption",
+            text_input=None,
+            model_id="microsoft/Florence-2-large",
+            api_name="/process_image"
+        )
 
-    if text_input is None:
-        prompt = task_prompt
-    else:
-        prompt = task_prompt + text_input
+        os.unlink(temp_file_path)
 
-    inputs = processor(text=prompt, images=image, return_tensors="pt").to(device)
-
-    generated_ids = model.generate(
-        input_ids=inputs["input_ids"],
-        pixel_values=inputs["pixel_values"],
-        max_new_tokens=1024,
-        early_stopping=False,
-        do_sample=False,
-        num_beams=3,
-    )
-
-    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-
-    output = processor.post_process_generation(
-        generated_text,
-        task=task_prompt,
-        image_size=(image.width, image.height)
-    )
-
-    long_caption = list(output.values())[0]
-    return '\n'.join(textwrap.wrap(long_caption))
+        return result
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
