@@ -4,7 +4,7 @@ from PIL import Image
 import io
 
 st.write("""# Instagram Post Generator""")
-image = st.file_uploader(label="Upload your image", type=["jpg", "jpeg", "png"])
+image = st.file_uploader(label="Upload your image", type=["jpg", "jpeg", "png", "heic"])
 text_input = st.text_input("Optional: Add some context to the image", "")
 
 if image:
